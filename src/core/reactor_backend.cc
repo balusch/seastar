@@ -668,6 +668,7 @@ reactor_backend_aio::make_pollable_fd_state(file_desc fd, pollable_fd::speculati
 
 reactor_backend_epoll::reactor_backend_epoll(reactor& r)
         : _r(r)
+        , _highres_timer_pending(false)
         , _steady_clock_timer_reactor_thread(file_desc::timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK|TFD_CLOEXEC))
         , _steady_clock_timer_timer_thread(file_desc::timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK|TFD_CLOEXEC))
         , _epollfd(file_desc::epoll_create(EPOLL_CLOEXEC))

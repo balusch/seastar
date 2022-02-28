@@ -119,3 +119,12 @@ seastar_add_demo (file
 
 seastar_add_demo (tutorial_examples
   SOURCES tutorial_examples.cc)
+
+seastar_add_demo (study_demo
+  SOURCES study_demo.cc)
+
+seastar_add_demo(balus_demo_loop
+  SOURCES balus/loop_demo.cc)
+
+seastar_add_demo(balus_demo_semamphore
+        SOURCES balus/semaphore_demo.cc)
