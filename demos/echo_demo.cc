@@ -89,6 +89,7 @@ void usage()
 #endif
 
 int main(int ac, char** av) {
+
     std::unique_ptr<net::device> dnet;
     net::qp* vnet;
 

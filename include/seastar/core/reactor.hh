@@ -169,6 +169,7 @@ class io_queue;
 class io_intent;
 class disk_config_params;
 
+// balus(q): 不用知道 kernel_completion 的定义也可以作为基类么？
 class io_completion : public kernel_completion {
 public:
     virtual void complete_with(ssize_t res) final override;
@@ -264,7 +265,7 @@ private:
     static constexpr unsigned max_aio = max_aio_per_queue * max_queues;
     friend disk_config_params;
 
-    // Each mountpouint is controlled by its own io_queue, but ...
+    // Each mountpoint is controlled by its own io_queue, but ...
     std::unordered_map<dev_t, std::unique_ptr<io_queue>> _io_queues;
     // ... when dispatched all requests get into this single sink
     internal::io_sink _io_sink;

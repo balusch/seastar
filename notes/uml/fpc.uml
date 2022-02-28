@@ -1,0 +1,130 @@
+@startuml fpc
+
+scale 2
+
+abstract class task {
+    - scheduling_group _sg
+
+    + run_and_dispose()
+    + waiting_task()
+}
+
+class continuation_base<T> {
+    # future_state _state
+
+    + set_state()
+}
+
+class continuation_base_with_promise<Promise, T> {
+    # Promise _pr
+
+    # waiting_task()
+}
+
+class continuation<Promise, Func, Wrapper, T> {
+    + Func _func
+    + Wrapper _wrapper
+
+    + run_and_dispose()
+}
+
+continuation_base --|> task
+continuation_base_with_promise --|> continuation_base
+continuation --|> continuation_base_with_promise
+
+
+class promise_base {
+    # future_base* _future
+    # future_state_base* _state
+    # task* _task
+
+    # make_ready()
+    # set_exception_impl()
+    # set_exception()
+    # waiting_task()
+}
+
+class promise_base_with_type<T> {
+    # get_state()
+    + set_urgent_state()
+    + set_value()
+    + set_to_current_exception()
+}
+
+class promise<T> {
+    - future_state _local_state
+
+    + get_future()
+    + set_value()
+    + set_exception()
+}
+
+promise_base_with_type --|> promise_base
+promise --|> promise_base_with_type
+
+
+class future_state_base {
+    + any _u
+
+    + rethrow_exception()
+    + valid()
+    + available()
+    + failed()
+    + ignore()
+    + set_exception()
+    + get_exception()
+}
+
+class future_state<T> {
+    + set()
+    + get_value()
+    + take_value()
+    + get()
+    + take()
+    + get0()
+}
+
+class future_base {
+    # promise_base* _promise
+
+    # future_base(promise_base*, future_state_base*)
+    # detach_promise()
+    # schedule(task*, future_state_base*)
+    # do_wait()
+}
+
+class uninitialized_wrapper {
+}
+
+class uninitialized_wrapper_base {
+    + T _v
+
+    + uninitialized_get()
+    + uninitialized_set()
+}
+
+class future<T> {
+    - future_state _state
+
+    - get_promise()
+    - detach_promise()
+    - schedule(continuation_base*)
+    - set_callback(continuation_base*)
+    + get()
+    + get_exception()
+    + get0()
+    + wait()
+    + then()
+    + then_wrapped()
+    + or_terminate()
+    + discard_result()
+    + handle_exception()
+    + ignore_ready_future()
+}
+
+uninitialized_wrapper --|> uninitialized_wrapper_base
+future_state --|> uninitialized_wrapper
+future_state --|> future_state_base
+future --|> future_base
+
+@enduml
