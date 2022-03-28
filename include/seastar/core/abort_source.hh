@@ -79,6 +79,8 @@ public:
     public:
         subscription() = default;
 
+        /* copy assignment operator and copy constructor is implicitly
+         * deleted since subscription has a user-declared move constructor */
         subscription(subscription&& other) noexcept(std::is_nothrow_move_constructible<subscription_callback_type>::value)
                 : _target(std::move(other._target)) {
             subscription_list_type::node_algorithms::swap_nodes(other.this_ptr(), this_ptr());
