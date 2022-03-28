@@ -210,7 +210,7 @@ public:
     basic_semaphore(size_t count, exception_factory&& factory) noexcept(std::is_nothrow_move_constructible_v<exception_factory>)
         : exception_factory(std::move(factory))
         , _count(count)
-        , _wait_list(expiry_handler{*this})
+        , _wait_list(expiry_handler{*this}) // balus(n): expiry_handler{*this} is an aborter for abortable_fifo
     {
         static_assert(std::is_nothrow_move_constructible_v<expiry_handler>);
     }

@@ -128,3 +128,6 @@ seastar_add_demo(balus_demo_loop
 
 seastar_add_demo(balus_demo_semamphore
         SOURCES balus/semaphore_demo.cc)
+
+seastar_add_demo(balus_demo_abort_source
+        SOURCES balus/abort_source_demo.cc)
