@@ -131,3 +131,6 @@ seastar_add_demo(balus_demo_semamphore
 
 seastar_add_demo(balus_demo_abort_source
         SOURCES balus/abort_source_demo.cc)
+
+seastar_add_demo(balus_demo_rwlock
+        SOURCES balus/rwlock_demo.cc)
