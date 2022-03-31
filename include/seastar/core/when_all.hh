@@ -134,12 +134,14 @@ public:
 
 template<typename ResolvedTupleTransform, typename... Futures>
 class when_all_state : public when_all_state_base {
+    /* balus(Q) 一共传入了多少个 tuple，这个是可以编译期计算出来的么？*/
     static constexpr size_t nr = sizeof...(Futures);
     using type = std::tuple<Futures...>;
     type tuple;
     // We only schedule one continuation at a time, and store it in _cont.
     // This way, if while the future we wait for completes, some other futures
     // also complete, we won't need to schedule continuations for them.
+    /* balus(Q): std::aligned_union_t 的作用是什么？*/
     std::aligned_union_t<1, when_all_state_component<Futures>...> _cont;
     when_all_process_element _processors[nr];
 public:
@@ -156,6 +158,20 @@ public:
 private:
     template <size_t... Idx>
     void init_element_processors(std::index_sequence<Idx...>) {
+        /* balus(N): 这里用到了 fold expression(?)；本来目的是初始化 _processors 中每个元素，
+         * 常规做法是对 std::index_sequence<Idx...> 做循环，但是使用下面这个奇技淫巧，
+         * 让编译器帮我们在编译期就做了循环展开？
+         * REF: https://codereview.stackexchange.com/questions/51407/stdtuple-foreach-implementation */
+
+#if 0
+        [&]() {
+            _processors[Idx] = when_all_process_element{
+                    when_all_state_component<std::tuple_element_t<Idx, type>>::process_element_func,
+                    &std::get<Idx>(tuple)
+            };
+        }();
+#endif
+
         auto ignore = {
         0,
             (_processors[Idx] = when_all_process_element{
@@ -247,6 +263,9 @@ when_all_impl(Futs&&... futs) noexcept {
 ///         all contained futures will be ready as well.
 template <typename... FutOrFuncs>
 inline auto when_all(FutOrFuncs&&... fut_or_funcs) noexcept {
+    /* balus(N): when_all 可以接受一个返回 future 的函数，或者直接一个 future；
+     * 如果是函数的话，futurize_invoke_if_func 的偏特化版本会调用该函数，使得这
+     * 两种情况最终保持一致：即 when_all_impl 只接收 future */
     return internal::when_all_impl(futurize_invoke_if_func(std::forward<FutOrFuncs>(fut_or_funcs))...);
 }
 
