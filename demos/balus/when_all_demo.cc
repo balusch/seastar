@@ -9,25 +9,42 @@
 
 namespace ss = seastar;
 
-static ss::future<> f1();
-static ss::future<> f2();
+[[maybe_unused]] static ss::future<> f1();
+[[maybe_unused]] static ss::future<> f2();
 
 int main(int argc, char** argv) {
-    ss::app_template app;
-    app.run(argc, argv, f1);
-    app.run(argc, argv, f2);
+    for (auto& f : {f1, f2}) {
+        ss::app_template app;
+        app.run(argc, argv, f);
+    }
     return 0;
 }
 
 static ss::future<> f1() {
     using namespace std::chrono_literals;
+    return ss::sleep(1s).then([]() { fmt::print("fiber #1 sleep done...\n"); });
+}
 
-    auto fut1 = ss::sleep(3s).then([]() { fmt::print("sleep done..."); });
-    auto fut2 =
-        ss::sleep(2s).then([]() { return ss::make_ready_future<int>(13); });
+static ss::future<> f2() {
+    using namespace std::chrono_literals;
+    return ss::sleep(2s).then([]() { fmt::print("fiber #2 sleep done...\n"); });
+}
+
+#if 0
+static ss::future<> f1() {
+    using namespace std::chrono_literals;
+
+    auto fut1 =
+        ss::sleep(3s).then([]() { fmt::print("fiber #1 sleep done..."); });
+    auto fut2 = ss::sleep(2s).then([]() {
+        fmt::print("fiber #2 sleep done...\n");
+        return ss::make_ready_future<int>(13);
+    });
     auto func = []() {
-        return ss::sleep(1s).then(
-            []() { return ss::current_exception_as_future<double>(); });
+        return ss::sleep(1s).then([]() {
+            fmt::print("fiber #3 sleep done...\n");
+            return ss::make_ready_future<double>(3.14);
+        });
     };
 
     return ss::when_all(std::move(fut1), std::move(fut2), func)
@@ -49,13 +66,13 @@ static ss::future<> f2() {
         ss::sleep(2s).then([]() { fmt::print("fiber #1 sleep done...\n"); }));
     futs.emplace_back(
         ss::sleep(3s).then([]() { fmt::print("fiber #2 sleep done...\n"); }));
-    futs.emplace_back(ss::sleep(1s).then([]() {
-        fmt::print("fiber #3 sleep done...\n");
-        return ss::current_exception_as_future<>();
-    }));
+    futs.emplace_back(
+        ss::sleep(1s).then([]() { fmt::print("fiber #3 sleep done...\n"); }));
 
     return ss::when_all(futs.begin(), futs.end())
         .then([](std::vector<ss::future<>>&& futs) {
             fmt::print("when_all() done...\n");
         });
 }
+
+#endif
