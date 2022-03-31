@@ -1,0 +1,11 @@
+ColumnLimit: 80
+BasedOnStyle: Google
+IndentWidth: 4
+
+#AlignConsecutiveDeclarations: Consecutive
+#AlignConsecutiveBitFields: AcrossEmptyLinesAndComments
+#AlignConsecutiveMacros: AcrossEmptyLinesAndComments
+AlignEscapedNewlines: Right
+AlignOperands: AlignAfterOperator
+AlignTrailingComments: true
+AllowAllArgumentsOnNextLine: true

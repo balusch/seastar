@@ -1,15 +1,15 @@
 
-#include <iostream>
 #include <chrono>
+#include <iostream>
 
-#include "seastar/core/reactor.hh"
-#include "seastar/core/smp.hh"
-#include "seastar/core/gate.hh"
-#include "seastar/core/thread.hh"
 #include "seastar/core/app-template.hh"
-#include "seastar/core/sleep.hh"
-#include "seastar/core/future.hh"
 #include "seastar/core/future-util.hh"
+#include "seastar/core/future.hh"
+#include "seastar/core/gate.hh"
+#include "seastar/core/reactor.hh"
+#include "seastar/core/sleep.hh"
+#include "seastar/core/smp.hh"
+#include "seastar/core/thread.hh"
 
 namespace ss = seastar;
 
@@ -17,9 +17,7 @@ extern ss::future<> f();
 extern ss::future<> f2();
 extern ss::future<> f3();
 
-int
-main(int argc, char **argv)
-{
+int main(int argc, char** argv) {
     ss::app_template app;
     return app.run(argc, argv, f2);
 }
@@ -28,20 +26,23 @@ ss::future<> f() {
     auto task = []() {
         std::cout << "run on shard-" << ss::this_shard_id() << std::endl;
     };
-    return ss::smp::invoke_on_others(task).then_wrapped([](ss::future<> &&fut) {
+    return ss::smp::invoke_on_others(task).then_wrapped([](ss::future<>&& fut) {
         if (fut.failed()) {
-            std::cout << "invoke_on_others() failed: " << fut.get_exception() << std::endl;
+            std::cout << "invoke_on_others() failed: " << fut.get_exception()
+                      << std::endl;
         } else {
             std::cout << "invoke_on_others() succeeded" << std::endl;
         }
     });
 }
 
-seastar::future<std::string> fetch(const std::string &domain,
-                                   const std::string &object) {
+seastar::future<std::string> fetch(const std::string& domain,
+                                   const std::string& object) {
     static int count = 0;
-    return ++count != 2 ?ss::make_exception_future<std::string>(std::logic_error("logic error"))
-            : ss::make_ready_future<std::string>("bbbbbbbbbbbbbbbbb");
+    return ++count != 2
+             ? ss::make_exception_future<std::string>(
+                   std::logic_error("logic error"))
+             : ss::make_ready_future<std::string>("bbbbbbbbbbbbbbbbb");
 }
 
 #if 0
@@ -251,35 +252,48 @@ ss::future<std::string> search(std::string &&object) {
 }
 
 #else
-ss::future<std::string> search(std::string &&object) {
+ss::future<std::string> search(std::string&& object) {
     static std::vector<std::string> domains = {
-            "www.google.com",
-            "www.bing.com",
-            "www.baidu.com",
+        "www.google.com",
+        "www.bing.com",
+        "www.baidu.com",
     };
 
     auto result = ss::make_shared<std::string>();
-    return ss::do_with(int(), [result, object = std::move(object)](int &cur) mutable {
-        return ss::repeat([&cur, result, object = std::move(object)](){
-            return fetch(domains[cur], object).then_wrapped([&cur, result](ss::future<std::string> &&fut) mutable {
-                std::cout << "fetch from the " << cur << "-th domain: " << domains[cur];
-                if (!fut.failed()) {
-                    *result = fut.get0();
-                    return ss::stop_iteration::yes;
-                }
-                cur++;
-                std::cout << " FAILED: " << fut.get_exception() << std::endl;
-                return cur == domains.size() ? ss::stop_iteration::yes
-                                             : ss::stop_iteration::no;
-            });
+    return ss::do_with(
+               int(),
+               [result, object = std::move(object)](int& cur) mutable {
+                   return ss::repeat([&cur, result,
+                                      object = std::move(object)]() {
+                       return fetch(domains[cur], object)
+                           .then_wrapped(
+                               [&cur,
+                                result](ss::future<std::string>&& fut) mutable {
+                                   std::cout << "fetch from the " << cur
+                                             << "-th domain: " << domains[cur];
+                                   if (!fut.failed()) {
+                                       *result = fut.get0();
+                                       return ss::stop_iteration::yes;
+                                   }
+                                   cur++;
+                                   std::cout
+                                       << " FAILED: " << fut.get_exception()
+                                       << std::endl;
+                                   return cur == domains.size()
+                                            ? ss::stop_iteration::yes
+                                            : ss::stop_iteration::no;
+                               });
+                   });
+               })
+        .then([result]() {
+            return ss::make_ready_future<std::string>(std::move(*result));
         });
-    }).then([result]() { return ss::make_ready_future<std::string>(std::move(*result)); });
 }
 
 #endif
 
 ss::future<> f2() {
-    return search("laputa").then_wrapped([](ss::future<std::string> &&fut) {
+    return search("laputa").then_wrapped([](ss::future<std::string>&& fut) {
         if (fut.failed()) {
             std::cout << "search FAILED: " << fut.get_exception() << std::endl;
         } else {
