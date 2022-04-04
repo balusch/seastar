@@ -93,6 +93,10 @@ public:
         }
     }
     void do_wait_all() noexcept {
+        /* balus(N): complete_one() 的语义是完成了一个异步操作(另一处调用是在
+         * when_all_state_component::run_and_dispose() 中)，内部它会先递减
+         * _nr_remain，然后处理下一个异步操作；这里是开启整个处理流程，并没有异步
+         * 操作完成，所以为了满足 complete_one() 的语义，需要先递增 _nr_remain */
         ++_nr_remain; // fake pending completion for complete_one()
         complete_one();
     }
@@ -141,7 +145,10 @@ class when_all_state : public when_all_state_base {
     // We only schedule one continuation at a time, and store it in _cont.
     // This way, if while the future we wait for completes, some other futures
     // also complete, we won't need to schedule continuations for them.
-    /* balus(Q): std::aligned_union_t 的作用是什么？*/
+    /* balus(N): 每次我们只需要等待一个 future，所以同时只需要为一个 future 分配 continuation，
+     * 所以我们可以一直重用一块内存(通过 placement new 在其上重新构造)，但是 continuation 中包含
+     * 状态，也就是 future 的值，所以不同 continuation 大小也不同，所以我们需要分配一个至少能容纳
+     * 最大状态的内存，`std::aligned_union_t` 就是这样一个支持可变参数的 union */
     std::aligned_union_t<1, when_all_state_component<Futures>...> _cont;
     when_all_process_element _processors[nr];
 public:
