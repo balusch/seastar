@@ -38,6 +38,7 @@ void thread_pool::work(sstring name) {
     std::array<syscall_work_queue::work_item*, syscall_work_queue::queue_length> tmp_buf;
     while (true) {
         uint64_t count;
+        /* balus(N): 如果线程池没有任务，那么该线程会被阻塞在这个 read 操作上 */
         auto r = ::read(inter_thread_wq._start_eventfd.get_read_fd(), &count, sizeof(count));
         assert(r == sizeof(count));
         if (_stopped.load(std::memory_order_relaxed)) {
@@ -52,6 +53,9 @@ void thread_pool::work(sstring name) {
             wi->process();
             inter_thread_wq._completed.push(wi);
         }
+        /* balus(N): 走到这里说明线程池已经处理了任务，所以有一些 future 会被 resolve，那么其 continuation
+         * 就需要 worker 线程去执行，如果 worker 线程正在睡眠，那么线程池就通过这个 notify eventfd 通知它，
+         * 写该 fd 会产生一个可读事件从而被 epoll 感知到并唤醒 worker 线程继续执行其 main run loop */
         if (_main_thread_idle.load(std::memory_order_seq_cst)) {
             uint64_t one = 1;
             ::write(_reactor->_notify_eventfd.get(), &one, 8);
