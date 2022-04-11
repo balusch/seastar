@@ -137,3 +137,6 @@ seastar_add_demo(balus_demo_rwlock
 
 seastar_add_demo(balus_demo_when_all
         SOURCES balus/when_all_demo.cc)
+
+seastar_add_demo(balus_demo_thread_pool
+        SOURCES balus/thread_pool_demo.cc)
