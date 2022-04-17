@@ -154,6 +154,21 @@ app_template::configuration() {
 int
 app_template::run(int ac, char ** av, std::function<future<int> ()>&& func) noexcept {
     return run_deprecated(ac, av, [func = std::move(func)] () mutable {
+        /* balus(Q): 这块代码没有看明白
+         * - 为什么要 at_exit 这样一个函数呢？
+         * - 为什么 finally 没有接受一个 int exit_code 参数，反而是后面串联的 then 接受的呢？
+         * 需要去理解 Seastar 中的 finally 的语义：
+         * .finally(): similar to a Java finally block, a .finally() continuation is
+         * executed whether or not its input future carries an exception or not. The
+         * result of the finally continuation is its input future, so .finally() can
+         * be used to insert code in a flow that is executed unconditionally, but
+         * otherwise does not alter the flow.
+         * 也就是说 finally 并不是只能用作最后一个 continuation，而只是一个**一定会执行**的
+         * continuation，它返回的还是调用它的 future，这就相当于在 continuation chain(即
+         * fiber) 中插入一段代码，但是并不影响整个 fiber 的执行；比如在两个 continuation A
+         * 和 B 中插入一个 finally block，并不会影响 B 的 input future(依旧是 A)
+         */
+
         auto func_done = make_lw_shared<promise<>>();
         engine().at_exit([func_done] { return func_done->get_future(); });
         // No need to wait for this future.
@@ -237,6 +252,9 @@ app_template::run_deprecated(int ac, char ** av, std::function<void ()>&& func) 
         return 1;
     }
 
+    /* balus(N): 在 _smp->configure() 中就创建了所有的 reactor，除 cpu-0 上的 reactor
+     * 之外的所有 reactor 都直接进入了工作循环，而 reactor-0 作为管理线程还需要处理其他事宜 */
+
     try {
         _smp->configure(_opts.smp_opts, _opts.reactor_opts);
     } catch (...) {
@@ -253,6 +271,9 @@ app_template::run_deprecated(int ac, char ** av, std::function<void ()>&& func) 
             scollectd::configure( _opts.scollectd_opts);
         });
     }).then(
+        /* balus(N): 真正调用函数的地方在这里，虽然没有 func() 这样显式调用，
+         * 但是实际上 then 方法就是接受一个 callable object 然后调用，看惯了
+         * 直接构造 lambda 的现在来看这种传入一个已有的 callable object 会感觉有点奇怪 */
         std::move(func)
     ).then_wrapped([] (auto&& f) {
         try {
@@ -262,6 +283,10 @@ app_template::run_deprecated(int ac, char ** av, std::function<void ()>&& func) 
             engine().exit(1);
         }
     });
+
+    /* reactor-0 也进入了其 run loop，主要是接受一些外部指令，以及其他 reactor 发来的任务(比如退出任务)
+     * 从这里也可以发现，传给 app-template 的函数是在 reactor-0 上被执行的，但是这并不意味着它只用到了
+     * reactor-0，因为在其中可以通过 smp 类将任务发送到其他 reactor 去执行从而将其他 cpu 也利用起来 */
     auto exit_code = engine().run();
     _smp->cleanup();
     return exit_code;

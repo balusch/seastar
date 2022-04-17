@@ -2215,6 +2215,7 @@ future<> reactor::run_exit_tasks() {
 }
 
 void reactor::stop() {
+    /* balus(N): 说明只有 reactor-0 才会执行 stop 任务 */
     assert(_id == 0);
     _smp->cleanup_cpu();
     if (!_stopping) {
@@ -2240,6 +2241,10 @@ void reactor::stop() {
     }
 }
 
+/* balus(N): 每一个 reactor 都可以调用，但是都只是投递一个任务至 reactor-0，
+ * 随后 reactor-0 会向其他所有 reactor 投递一个 stop 任务让它们退出，这样
+ * reactor-0 起到了一个通知其他所有 reactor 的作用，就不用由 exit 的发起方
+ * 来通知其他 reactor */
 void reactor::exit(int ret) {
     // Run stop() asynchronously on cpu 0.
     (void)smp::submit_to(0, [this, ret] { _return = ret; stop(); });
