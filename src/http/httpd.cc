@@ -485,11 +485,13 @@ future<> http_server::stop() {
 
 // FIXME: This could return void
 future<> http_server::do_accepts(int which) {
+    /* balus(Q): 为什么这里要两次调用 try_with_gate? 而起 do_accept_one() 里面又调用了一次 */
     (void)try_with_gate(_task_gate, [this, which] {
         return keep_doing([this, which] {
             return try_with_gate(_task_gate, [this, which] {
                 return do_accept_one(which);
             });
+            /* balus(): handle_exception_type 的作用? */
         }).handle_exception_type([](const gate_closed_exception& e) {});
     }).handle_exception_type([](const gate_closed_exception& e) {});
     return make_ready_future<>();

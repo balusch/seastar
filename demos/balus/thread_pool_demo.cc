@@ -8,6 +8,7 @@ namespace ss = seastar;
 
 [[maybe_unused]] static ss::future<> f1();
 [[maybe_unused]] static ss::future<> f2();
+[[maybe_unused]] static ss::future<> f3();
 
 int main(int argc, char **argv) {
     ss::app_template app;
@@ -50,4 +51,15 @@ static ss::future<> f2() {
             return (uint64_t)info.st_size;
         })
         .then([](uint64_t &&size) { fmt::print("size: {}\n", size); });
+}
+
+static ss::future<> f3() {
+    return ss::engine()
+        .rename_file("hello.txt", "world.txt")
+        .then_wrapped([](ss::future<> &&fut) {
+            if (fut.failed()) {
+                fmt::print("rename file failed: {}", fut.get_exception());
+            }
+            return ss::make_ready_future<>();
+        });
 }
