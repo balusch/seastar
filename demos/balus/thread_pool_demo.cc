@@ -26,8 +26,10 @@ int main(int argc, char **argv) {
                     "\tallocated_size:{}\tatime:{}\tmtime:{}\tctime{}\n",
                     sd.device_id, sd.inode_number, sd.mode, sd.type,
                     sd.number_of_links, sd.uid, sd.gid, sd.rdev, sd.size,
-                    sd.block_size, sd.allocated_size, sd.time_accessed,
-                    sd.time_modified, sd.time_changed);
+                    sd.block_size, sd.allocated_size,
+                    sd.time_accessed.time_since_epoch().count(),
+                    sd.time_modified.time_since_epoch().count(),
+                    sd.time_changed.time_since_epoch().count());
                 return ss::make_ready_future<>();
             });
     });
