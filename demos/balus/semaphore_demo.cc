@@ -21,11 +21,8 @@ struct counter {
     int c;
 };
 
-static ss::future<> f() __attribute__((unused));
-static ss::future<> f1() __attribute__((unused));
-static ss::future<> f2() __attribute__((unused));
-static ss::future<> f3() __attribute__((unused));
-static ss::future<> f4() __attribute__((unused));
+[[maybe_unused]] static ss::future<> f();
+[[maybe_unused]] static ss::future<> f1();
 
 int main(int argc, char** argv) {
     ss::app_template app;

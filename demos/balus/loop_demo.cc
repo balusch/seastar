@@ -261,8 +261,8 @@ ss::future<std::string> search(std::string&& object) {
 
     auto result = ss::make_shared<std::string>();
     return ss::do_with(
-               int(),
-               [result, object = std::move(object)](int& cur) mutable {
+               size_t(),
+               [result, object = std::move(object)](size_t& cur) mutable {
                    return ss::repeat([&cur, result,
                                       object = std::move(object)]() {
                        return fetch(domains[cur], object)
