@@ -252,6 +252,10 @@ public:
             return (pos <= size()) ? pos : npos;
         }
 
+        if (end - it < c_str_end - c_str) {
+            return npos;
+        }
+
         while (it < end) {
             auto i = it;
             auto j = c_str;
