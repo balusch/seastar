@@ -248,6 +248,8 @@ void internal::future_base::do_wait() noexcept {
     assert(thread);
     thread_wake_task wake_task{thread};
     wake_task.make_backtrace();
+    /* 由于 wait_task 是在 ucontext 栈上分配的，所以即使
+     * switch-out 了也不会销毁，所以可以放心地通过指针引用它 */
     _promise->_task = &wake_task;
     thread_impl::switch_out(thread);
 }
