@@ -23,6 +23,7 @@ struct counter {
 [[maybe_unused]] static ss::future<> f();
 [[maybe_unused]] static ss::future<> f1();
 [[maybe_unused]] static ss::future<> f2();
+[[maybe_unused]] static ss::future<> f3();
 
 int main(int argc, char** argv) {
     ss::app_template app;
@@ -111,4 +112,22 @@ static ss::future<> f2() {
 
     return ss::sleep(5s).then(
         []() { fmt::print("finally data is {}\n", data); });
+}
+
+static ss::future<> f3() {
+    static semaphore sema{1};
+
+    auto may_throw = []() {
+        if ((std::rand() % 3) < 2) {
+            throw("I just wanna throw"):
+        }
+        using std::chrono_literals;
+        return ss::sleep(1s).then([]() {
+            std::cout << "fortunately, no throw" < std::endl;
+        });
+    }
+
+    (void) sema.wait(1).then(may_throw()).then([]() {
+        sema.signal(1);
+    });
 }
