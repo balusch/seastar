@@ -144,3 +144,5 @@ seastar_add_demo(balus_demo_thread_pool
 seastar_add_demo(balus_demo_sstring
         SOURCES balus/sstring_demo.cc)
 
+seastar_add_demo(balus_demo_thread
+        SOURCES balus/thread_demo.cc)
