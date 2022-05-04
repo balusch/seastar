@@ -102,6 +102,7 @@ public:
     using difference_type = ssize_t;  // std::make_signed_t<Size> can be too small
     using size_type = Size;
     static constexpr size_type  npos = static_cast<size_type>(-1);
+    // 这里 padding 计算的是填充数目，其实只有 0 和 1，但是转换成 unsigned 便于长度计算
     static constexpr unsigned padding() { return unsigned(NulTerminate); }
 public:
     struct initialized_later {};
@@ -114,6 +115,7 @@ public:
     }
     basic_sstring(const basic_sstring& x) {
         if (x.is_internal()) {
+            // 原生数组拷贝
             u.internal = x.u.internal;
         } else {
             u.internal.size = -1;
@@ -146,6 +148,7 @@ public:
             }
             u.internal.size = size;
         } else {
+            // balus(Q): 这处赋值有必要么？
             u.internal.size = -1;
             u.external.str = reinterpret_cast<char_type*>(std::malloc(size + padding()));
             if (!u.external.str) {
@@ -186,6 +189,7 @@ public:
     }
 
     basic_sstring(const char* x) : basic_sstring(reinterpret_cast<const char_type*>(x), std::strlen(x)) {}
+    // balus(Q): 为什么这里用 x.c_str()，但是下面的却用 data()?
     basic_sstring(std::basic_string<char_type>& x) : basic_sstring(x.c_str(), x.size()) {}
     basic_sstring(std::initializer_list<char_type> x) : basic_sstring(x.begin(), x.end() - x.begin()) {}
     basic_sstring(const char_type* b, const char_type* e) : basic_sstring(b, e - b) {}
@@ -362,6 +366,11 @@ public:
             }
             return *this;
         }
+        /* balus(N): replace 并不保证 source string 的长度不变(replace 的 caller 被称为 source string，
+         * source string 中需要被替换的部分([pos, min(size()-pos, n1-pos)) 称为 substring，要替换为的
+         * 字符串称为 target)；总之就是将 substring 替换为 target，而不用要求二者的长度是否相等(着重在字符串
+         * 完整的替换上，而不是单个字符一个一个地替换)；所以如果 target 是一个空串，那么 replace 的效果就相当于
+         * source 将 substring 删除 */
         basic_sstring ret(initialized_later(), size() + n2 - n1);
         char_type* p= ret.begin();
         std::copy(begin(), begin() + pos, p);
@@ -393,12 +402,14 @@ public:
         basic_sstring ret(initialized_later(), size() + (last - first) - (i2 - i1));
         char_type* p = ret.begin();
         p = std::copy(cbegin(), i1, p);
+        /* balus(Q): 为什么这里不检查 last - first 的长度是否为 0，和上一个 replace 版本保持一致？ */
         p = std::copy(first, last, p);
         std::copy(i2, cend(), p);
         *this = std::move(ret);
         return *this;
     }
 
+    /* 注意这就是 replace 中 target 的用途，起的是 erase 的作用 */
     iterator erase(iterator first, iterator last) {
         size_t pos = first - begin();
         replace(pos, last - first, nullptr, 0);
