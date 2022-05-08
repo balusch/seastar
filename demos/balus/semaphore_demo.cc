@@ -115,19 +115,21 @@ static ss::future<> f2() {
 }
 
 static ss::future<> f3() {
-    static semaphore sema{1};
+    static ss::semaphore sema{1};
+
+#if 0
 
     auto may_throw = []() {
         if ((std::rand() % 3) < 2) {
-            throw("I just wanna throw"):
+            throw std::runtime_error("I just wanna throw");
         }
-        using std::chrono_literals;
+        using namespace std::chrono_literals;
         return ss::sleep(1s).then([]() {
-            std::cout << "fortunately, no throw" < std::endl;
+            std::cout << "fortunately, no throw" << std::endl;
         });
-    }
+    };
 
-    (void) sema.wait(1).then(may_throw()).then([]() {
-        sema.signal(1);
-    });
+#endif
+
+    return sema.wait(1).then([]() { sema.signal(1); });
 }
