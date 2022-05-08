@@ -1,18 +1,16 @@
 
-#include "seastar/core/sstring.hh"
-
 #include <iostream>
+
+#include "seastar/core/sstring.hh"
 
 namespace ss = seastar;
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
     {
         ss::sstring s1{"hello"};
         ss::sstring s2{""};
         std::cout << "find: " << s1.find(s2, s2.size()) << std::endl;
     }
-
 
     {
         ss::sstring s1 = "hello";
@@ -27,7 +25,7 @@ int main(int argc, char **argv)
         std::cout << "after replace: " << s1 << std::endl;
     }
 
-    {   // overflow exception?
+    {  // overflow exception?
         ss::sstring s1 = "hello";
         ss::sstring s2 = "nice to meet you";
         s1.replace(s1.begin() + 1, s1.begin() + 3, s2.end(), s2.begin());
