@@ -267,23 +267,6 @@ using future_tuple_type_t = T;
 using future_tuple_type_t = std::conditional_t<std::is_same_v<T, monostate>, std::tuple<>, std::tuple<T>>;
 #endif
 
-// It doesn't seem to be possible to use std::tuple_element_t with an empty tuple. There is an static_assert in it that
-// fails the build even if it is in the non enabled side of std::conditional.
-template <typename T>
-struct get0_return_type;
-
-template <>
-struct get0_return_type<std::tuple<>> {
-    using type = void;
-    static type get0(std::tuple<>) { }
-};
-
-template <typename T0, typename... T>
-struct get0_return_type<std::tuple<T0, T...>> {
-    using type = T0;
-    static type get0(std::tuple<T0, T...> v) { return std::get<0>(std::move(v)); }
-};
-
 template<typename T>
 using maybe_wrap_ref = std::conditional_t<std::is_reference_v<T>, std::reference_wrapper<std::remove_reference_t<T>>, T>;
 
@@ -682,12 +665,16 @@ struct future_state :  public future_state_base, private internal::uninitialized
         }
         return this->uninitialized_get();
     }
-    using get0_return_type = typename internal::get0_return_type<internal::future_tuple_type_t<T>>::type;
-    static get0_return_type get0(T&& x) {
-        return internal::get0_return_type<T>::get0(std::move(x));
+    static auto get0(T&& x) {
+      // It doesn't seem to be possible to use std::tuple_element_t with an
+      // empty tuple. There is an static_assert in it that fails the build
+      // even if it is in the non enabled side of std::conditional.
+      if constexpr (std::tuple_size_v<T> != 0) {
+        return std::get<0>(std::move(x));
+      }
     }
 
-    get0_return_type get0() {
+    auto get0() {
 #if SEASTAR_API_LEVEL < 5
         return get0(std::move(*this).get());
 #else
@@ -1462,12 +1449,11 @@ public:
     /// one type parameter.
     ///
     /// Equivalent to: \c std::get<0>(f.get()).
-    using get0_return_type = typename future_state::get0_return_type;
-    get0_return_type get0() {
+    auto get0() {
 #if SEASTAR_API_LEVEL < 5
         return future_state::get0(get());
 #else
-        return (get0_return_type)get();
+        return get();
 #endif
     }
 
