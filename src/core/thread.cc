@@ -172,6 +172,7 @@ thread_context::thread_context(thread_attributes attr, noncopyable_function<void
         , _stack(make_stack(get_stack_size(attr)))
         , _func(std::move(func)) {
     setup(get_stack_size(attr));
+    /* balus(N): setup() 的时候就已经跳进去执行函数 */
     _all_threads.push_front(*this);
 }
 

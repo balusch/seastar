@@ -254,9 +254,15 @@ async(thread_attributes attr, Func&& func, Args&&... args) noexcept {
         auto wp = std::make_unique<work>(work{std::move(attr), std::forward<Func>(func), std::forward_as_tuple(std::forward<Args>(args)...)});
         auto& w = *wp;
         auto ret = w.pr.get_future();
+        /* balus(N): thread 的构造函数里面就已经跳进 ucontext 执行函数 */
         w.th = thread(std::move(w.attr), [&w] {
             futurize<return_type>::apply(std::move(w.func), std::move(w.args)).forward_to(std::move(w.pr));
         });
+        /* balus(N): thread_context::main() 结束，但这并不意味着函数就都结束了，
+         * 可能是因为执行了 wait/get 等等待操作而 switch 出来而导致 thread 的构造
+         * 函数结束，后续 wait/get 的 future 变为 available 之后调度执行其 continuation
+         * 就会再次 switch 进 ucontext 继续执行后续代码(当然也有可能后面又 switch
+         * 出来了，不过流程都是一样的) */
         return w.th.join().then([ret = std::move(ret)] () mutable {
             return std::move(ret);
         }).finally([wp = std::move(wp)] {});

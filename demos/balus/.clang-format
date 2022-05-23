@@ -2,9 +2,10 @@ ColumnLimit: 80
 BasedOnStyle: Google
 IndentWidth: 4
 
+AccessModifierOffset: -4
 #AlignConsecutiveDeclarations: Consecutive
-#AlignConsecutiveBitFields: AcrossEmptyLinesAndComments
-#AlignConsecutiveMacros: AcrossEmptyLinesAndComments
+AlignConsecutiveBitFields: AcrossEmptyLinesAndComments
+AlignConsecutiveMacros: AcrossEmptyLinesAndComments
 AlignEscapedNewlines: Right
 AlignOperands: AlignAfterOperator
 AlignTrailingComments: true
