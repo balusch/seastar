@@ -123,6 +123,9 @@ seastar_add_demo (tutorial_examples
 seastar_add_demo(balus_study_demo
   SOURCES balus/study_demo.cc)
 
+seastar_add_demo(balus_demo_future
+  SOURCES balus/future_demo.cc)
+
 seastar_add_demo(balus_demo_loop
   SOURCES balus/loop_demo.cc)
 
