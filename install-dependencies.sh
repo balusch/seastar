@@ -147,6 +147,7 @@ arch_packages=(
     hwloc
     numactl
     libpciaccess
+    liburing
     crypto++
     libxml2
     xfsprogs
@@ -194,6 +195,7 @@ opensuse_packages=(
     liblz4-devel
     libnuma-devel
     lksctp-tools-devel
+    liburing-devel
     ninja
     ragel
     xfsprogs-devel
