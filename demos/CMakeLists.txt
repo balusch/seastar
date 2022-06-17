@@ -123,29 +123,32 @@ seastar_add_demo (tutorial_examples
 seastar_add_demo(balus_study_demo
   SOURCES balus/study_demo.cc)
 
-seastar_add_demo(balus_demo_future
+seastar_add_demo(balus_future
   SOURCES balus/future_demo.cc)
 
-seastar_add_demo(balus_demo_loop
+seastar_add_demo(balus_loop
   SOURCES balus/loop_demo.cc)
 
-seastar_add_demo(balus_demo_semamphore
+seastar_add_demo(balus_semaphore
         SOURCES balus/semaphore_demo.cc)
 
-seastar_add_demo(balus_demo_abort_source
+seastar_add_demo(balus_abort_source
         SOURCES balus/abort_source_demo.cc)
 
-seastar_add_demo(balus_demo_rwlock
+seastar_add_demo(balus_rwlock
         SOURCES balus/rwlock_demo.cc)
 
-seastar_add_demo(balus_demo_when_all
+seastar_add_demo(balus_when_all
         SOURCES balus/when_all_demo.cc)
 
-seastar_add_demo(balus_demo_thread_pool
+seastar_add_demo(balus_thread_pool
         SOURCES balus/thread_pool_demo.cc)
 
-seastar_add_demo(balus_demo_sstring
+seastar_add_demo(balus_sstring
         SOURCES balus/sstring_demo.cc)
 
-seastar_add_demo(balus_demo_thread
+seastar_add_demo(balus_thread
         SOURCES balus/thread_demo.cc)
+
+seastar_add_demo(balus_smp
+        SOURCES balus/smp_demo.cc)
