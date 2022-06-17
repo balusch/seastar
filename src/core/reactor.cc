@@ -4091,8 +4091,13 @@ void smp::configure(const smp_options& smp_opts, const reactor_options& reactor_
     //  3. The .groups manipulations are guarded by the .lock lock (but it's
     //     also pre-resize()-d in advance)
 
+    // balus(Q): 为啥这个一定要放在各个 reactor 里面去做，直接在 reactor-0 帮他们做好不行么？
+    // 不行，因为创建 io_queue 需要有一个 io_sink 结构，这个是每个 reactor 各自有的
     auto alloc_io_queues = [&ioq_topology, &disk_config] (shard_id shard) {
         for (auto& topo : ioq_topology) {
+            // balus(N): 不同的 reactor 可能属于同一个 io_group，这个 io_group 只会创建一次，然后由这些 reactor 共享
+            // 所以 reactor 创建 io_queue 时，需要通过 shard-id 找到其所在的 group 的 id，然后根据 group-id 找到
+            // 其所属的 io_group，如果该 io_group 还没有创建， 那么就初始化，否则直接使用它创建当前 reactor 的 io_queue
             auto& io_info = topo.second;
             auto group_idx = io_info.shard_to_group[shard];
             std::shared_ptr<io_group> group;
@@ -4113,6 +4118,8 @@ void smp::configure(const smp_options& smp_opts, const reactor_options& reactor_
         }
     };
 
+    // balus(Q): 为什么 alloc 和 assign 要分成两个操作呢？直接放一个函数里面不行么？
+    // balus(N): 在 alloc_io_queues 到 assign_io_queues 中还有好几步操作，但是似乎没有影响？
     auto assign_io_queues = [&ioq_topology] (shard_id shard) {
         for (auto& topo : ioq_topology) {
             auto queue = std::move(topo.second.queues[shard]);
@@ -4122,6 +4129,7 @@ void smp::configure(const smp_options& smp_opts, const reactor_options& reactor_
             auto num_io_groups = topo.second.groups.size();
             if (engine()._num_io_groups == 0) {
                 engine()._num_io_groups = num_io_groups;
+            // balus(Q): 什么情况下会出现这个 else-if 的情况?
             } else if (engine()._num_io_groups != num_io_groups) {
                 throw std::logic_error(format("Number of IO-groups mismatch, {} != {}", engine()._num_io_groups, num_io_groups));
             }
