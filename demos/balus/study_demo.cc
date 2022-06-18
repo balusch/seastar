@@ -51,17 +51,14 @@ ss::future<> slow_op(const std::string &str) {
             [&str]() { std::cout << "continuation 2: " << str << std::endl; });
 }
 
-static ss::future<> test_fiber();
-static ss::future<> test_gate();
-static ss::future<int> my_test1();
-static ss::future<> my_test2();
+[[maybe_unused]] static ss::future<> test_fiber();
+[[maybe_unused]] static ss::future<> test_gate();
+[[maybe_unused]] static ss::future<int> my_test1();
+[[maybe_unused]] static ss::future<> my_test2();
+[[maybe_unused]] static ss::future<> my_test3();
 
 ss::future<> f() {
-    boost::ignore_unused(test_fiber);
-    boost::ignore_unused(test_gate);
-    boost::ignore_unused(my_test1);
-
-    return my_test2();
+    return my_test3();
 }
 
 static ss::future<> test_fiber() {
@@ -159,5 +156,14 @@ static ss::future<> my_test2() {
     return fut.then([] {
         (void)ss::sleep(1s);
         return ss::make_ready_future<>();
+    });
+}
+
+static ss::future<> my_test3() {
+    return ss::smp::invoke_on_all([]() {
+        return ss::sleep(1s).then([]() {
+            std::cout << "Say hello on reactor-" << ss::this_shard_id()
+                      << std::endl;
+        });
     });
 }
