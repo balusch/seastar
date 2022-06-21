@@ -152,3 +152,6 @@ seastar_add_demo(balus_thread
 
 seastar_add_demo(balus_smp
         SOURCES balus/smp_demo.cc)
+
+seastar_add_demo(balus_sharded_service
+        SOURCES balus/sharded_service_demo.cc)
