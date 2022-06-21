@@ -2962,6 +2962,23 @@ int reactor::do_run() {
         return pure_poll_once() || have_more_tasks();
     };
     while (true) {
+        // balus(N): 如果在某个 continuation 中主动调用了 engine().exit()，那么 reactor-0 会
+        // 执行完自己的 exit tasks，然后让其余的 reactor 都执行自己的 exit tasks 并将 _stopped
+        // 置为 true，当所有的 reactor 的 _stopped 都为 true 时，reactor-0 的 _stopped 也为 true，
+        // 所以很有可能 run_some_tasks() 之后，reactor 就进入了 stopped 状态，此时不能直接停止，
+        // 也为除 reactor-0 之外的其余 reactor 的停止，都是靠着 reactor-0 提交一个 remote task
+        // ```c++
+        //  engine()._smp->cleanup_cpu();
+        //  return engine().run_exit_tasks().then([] {
+        //      engine()._stopped = true;
+        //  });
+        // ```
+        // 去执行，本地 reactor run_some_tasks() 执行完这个 remote task 之后，还需要将结果送回去，
+        // 这是 Seastar 中 remote task 的执行机制，而这个送回去的动作是一个 continuation，所以通
+        // 常情况下需要等到下一轮 run loop 才会得到执行，如果我们直接退出，那么任务的结果就不会送达
+        // reactor-0，那么 reactor-0 的 stop() 中的 invoke_on_others 永远不会 resolve，所以
+        // 这里我们用一个 while 循环确保任务以及衍生任务确实执行完毕
+        // REF: https://github.com/scylladb/seastar/commit/8d53f1f61e1fa6b3208824d6297e833f55e777db
         run_some_tasks();
         if (_stopped) {
             load_timer.cancel();
@@ -2969,9 +2986,15 @@ int reactor::do_run() {
             while (have_more_tasks()) {
                 run_some_tasks();
             }
+            // balus(N): 从这里可以理解 exit task 和 destroy task 的区别
             while (!_at_destroy_tasks->_q.empty()) {
                 run_tasks(*_at_destroy_tasks);
             }
+            // balus(N): 这个用于表示这个 reactor 后续不会执行 task 了，所以后续使用者不应该往
+            // 任务队列里面再(通过 add_task/add_urgent_task)添加任务了，现在的在 poller 中
+            // 有使用，主要是因为 poller 的清理是通过往任务队列里面推入一个 deregisteration task
+            // 然后让 reactor 执行。
+            // REF: https://github.com/scylladb/seastar/commit/bcb5cf3a8dca19be0e577ee4e3bcd246f949dce6
             _finished_running_tasks = true;
             _smp->arrive_at_event_loop_end();
             if (_id == 0) {
@@ -3048,6 +3071,8 @@ reactor::sleep() {
         }
     }
 
+    // balus(Q): 在这里调用 epoll_wait，也就是说在没有 task 需要执行时才会调用，
+    // 那么会不会可能 task 一直执行导致 epoll_wait 得不到执行?
     _backend->wait_and_process_events(&_active_sigmask);
 
     for (auto i = _pollers.rbegin(); i != _pollers.rend(); ++i) {
@@ -3153,6 +3178,14 @@ poller::do_register() noexcept {
     _registration_task = task;
 }
 
+// balus(N): 为什么注册 poller 和注销 poller 需要以 task 的方式实现，而不能直接
+// 调用 reactor::register_poller() 和 reactor::unregister_poller() 呢？这是
+// 因为这俩方法会修改 reactor::_pollers 这个 std::vector，而我们很有可能迭恰好在
+// 迭代 reactor::_pollers 数组时调用它们，造成迭代器失效从而产生异常。这里的方法是
+// 并不直接清理 poller，而是将其作为一个 task 放入 reactor 的任务队列延后其执行，
+// 当 reactor 执行 task 时，对 _pollers 的遍历操作早就完成了，这个时候再去从里面
+// 删除元素就不会有什么影响了
+// REF: https://github.com/scylladb/seastar/commit/c09694d76c73c0575b0ce320f73cadca17a28190
 poller::~poller() {
     // We can't just remove the poller from reactor::_pollers, because we
     // may be running inside a poller ourselves, and so in the middle of
