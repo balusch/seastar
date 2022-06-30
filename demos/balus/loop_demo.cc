@@ -1,4 +1,5 @@
 
+#include <array>
 #include <chrono>
 #include <iostream>
 
@@ -16,10 +17,11 @@ namespace ss = seastar;
 extern ss::future<> f();
 extern ss::future<> f2();
 extern ss::future<> f3();
+extern ss::future<> f4();
 
 int main(int argc, char** argv) {
     ss::app_template app;
-    return app.run(argc, argv, f2);
+    return app.run(argc, argv, f4);
 }
 
 ss::future<> f() {
@@ -299,6 +301,42 @@ ss::future<> f2() {
         } else {
             std::cout << "search SUCCEEDED: " << fut.get0() << std::endl;
         }
+        return ss::make_ready_future<>();
+    });
+}
+
+// TEST: do_for_each invoke action and failed in the middle of the iteration
+ss::future<> f4() {
+    auto arr = ss::make_shared<std::vector<int>>();
+    *arr = {1, 3, 5, 6, 7, 9};
+    auto counter = ss::make_shared<int>(0);
+#if 1
+    return ss::do_for_each(*arr,
+#else
+    return ss::parallel_for_each(
+               *arr,
+#endif
+                           [counter](int& ele) {
+        (*counter)++;
+        using namespace std::chrono_literals;
+        int nsleep = std::rand() % 6;
+        return ss::sleep(nsleep * 1s).then([ele, nsleep]() {
+            fmt::print("ele {} sleep for {} seconds\n", ele, nsleep);
+            if (ele % 2) {
+                return ss::make_ready_future<>();
+            } else {
+                return ss::make_exception_future<>(
+                    std::runtime_error("do do do..."));
+            }
+        });
+    }).then_wrapped([counter, arr](ss::future<>&& fut) {
+        if (fut.failed()) {
+            auto ex = fut.get_exception();
+            fmt::print("do_for_each failed: {}\n", ex);
+        } else {
+            fmt::print("do_for_each succeeded\n");
+        }
+        fmt::print("counter: {}\n", *counter);
         return ss::make_ready_future<>();
     });
 }
