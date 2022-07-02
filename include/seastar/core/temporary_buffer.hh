@@ -132,6 +132,8 @@ public:
     ///
     /// \param size New size; must be smaller than current size.
     /// \return the same buffer, with a prefix removed.
+    // balus(N): 这个方法需要注意，它带了一个 &&(member function ref-qualifiers)
+    // 说明这个方法只能被 rvalue 给调用，所以使用之前需要 std::move(buf).pefix(13)
     temporary_buffer prefix(size_t size) && noexcept {
         auto ret = std::move(*this);
         ret._size = size;
@@ -152,6 +154,8 @@ public:
     /// until both the original and the clone have been destroyed.
     ///
     /// \return a clone of the buffer object.
+    // balus(N): 这个方法需要注意，share 并没有进行数据拷贝，还是引用的底层裸指针，
+    // 所以 deleter 需要追踪引用计数，才能正确地释放资源，后面看看 deleter 的实现
     temporary_buffer share() {
         return temporary_buffer(_buffer, _size, _deleter.share());
     }
@@ -162,6 +166,8 @@ public:
     /// \param pos Position of the first character to share.
     /// \param len Length of substring to share.
     /// \return a clone of the buffer object, referring to a substring.
+    // blaus(N): 这个方法需要注意，这里 _buffer 前移了，所以我们不能直接 delete _buffer，
+    // 而需要找到原来 malloc() 时创建出来的那个指针，这个信息必然需要 deleter 自己去维护
     temporary_buffer share(size_t pos, size_t len) {
         auto ret = share();
         ret._buffer += pos;
@@ -172,6 +178,7 @@ public:
     /// This creates a temporary buffer with the same length and data but not
     /// pointing to the memory of the original object.
     temporary_buffer clone() const {
+        // balus(N): 这里就是拷贝数据了
         return {_buffer, _size};
     }
     /// Remove a prefix from the buffer.  The underlying data

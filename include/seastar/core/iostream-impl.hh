@@ -152,6 +152,8 @@ future<> output_stream<CharType>::write(temporary_buffer<CharType> p) noexcept {
 template <typename CharType>
 future<temporary_buffer<CharType>>
 input_stream<CharType>::read_exactly_part(size_t n, tmp_buf out, size_t completed) noexcept {
+    // balus(N): completed 是已经读到的数据量(在 out 中)
+    // 如果当前 input_stream 底层的 buf 中还有残留数据，就先拷贝至 buf 中(最多拷贝 n-completed)
     if (available()) {
         auto now = std::min(n - completed, available());
         std::copy(_buf.get(), _buf.get() + now, out.get_write() + completed);
@@ -186,6 +188,8 @@ input_stream<CharType>::read_exactly(size_t n) noexcept {
         _buf.trim_front(n);
         return make_ready_future<tmp_buf>(std::move(front));
     } else if (_buf.size() == 0) {
+        // balus(N): _buf.size() == 0，说明 _buf 是未经初始化的(比如可能前一轮被 std::move 过)
+        // 所以先从底层的 data source 拿一个 buffer 上来，然后重新开始 read_exactly 流程
         // buffer is empty: grab one and retry
         return _fd.get().then([this, n] (auto buf) mutable {
             if (buf.size() == 0) {
@@ -228,6 +232,8 @@ input_stream<CharType>::consume(Consumer&& consumer) noexcept(std::is_nothrow_mo
                 return make_ready_future<stop_iteration>(stop_iteration(this->_eof));
             }, [this] (stop_consuming<CharType>& stop) {
                 // consumer is done
+                // balus(Q): 为啥 stop 里面还要包含一个 buf 呢？难道是因为前面把 input_stream 的 _buf std::move() 给了 consumer，
+                // 但是 consumer 实际上消费不完，所以这里 stop.get_buffer() 是 consumer 剩余的数据？
                 this->_buf = std::move(stop.get_buffer());
                 return make_ready_future<stop_iteration>(stop_iteration::yes);
             }, [this] (const skip_bytes& skip) {

@@ -74,6 +74,8 @@ public:
             return current_exception_as_future<tmp_buf>();
         }
     }
+    // balus(N): skip 还返回一个 temporary_buffer，这个并不是被 skip 的数据，
+    // 而是可能一次性读取了超过了 n，所以把 skip 后剩余的数据返回给用户去处理
     future<tmp_buf> skip(uint64_t n) noexcept {
         try {
             return _dsi->skip(n);
@@ -101,6 +103,8 @@ public:
         net::packet p;
         p.reserve(data.size());
         for (auto& buf : data) {
+            // balus(N): 将 temporary_buffer 的所有权转移到 net::packet 去，配合得很好啊
+            // 这个 net::packet 有点像 ngx_chain_t，是一个 buf 的链表？
             p = net::packet(std::move(p), net::fragment{buf.get_write(), buf.size()}, buf.release());
         }
         return put(std::move(p));

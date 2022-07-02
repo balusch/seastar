@@ -68,6 +68,7 @@ template <typename Variant, typename... Args>
 inline auto visit(Variant&& variant, Args&&... args)
 {
     static_assert(sizeof...(Args) > 0, "At least one lambda must be provided for visitation");
+    // balus(T): 下面对于 variant 是不是应该使用 forwarding reference?
     return std::visit(
         make_visitor(std::forward<Args>(args)...),
         variant);
