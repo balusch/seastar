@@ -57,9 +57,7 @@ ss::future<> slow_op(const std::string &str) {
 [[maybe_unused]] static ss::future<> my_test2();
 [[maybe_unused]] static ss::future<> my_test3();
 
-ss::future<> f() {
-    return my_test3();
-}
+ss::future<> f() { return my_test3(); }
 
 static ss::future<> test_fiber() {
     /*
