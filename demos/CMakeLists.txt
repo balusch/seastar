@@ -157,7 +157,7 @@ seastar_add_demo(balus_sharded_service
         SOURCES balus/sharded_service_demo.cc)
 
 seastar_add_demo(balus_temporary_buffer
-	SOURCES balus/temporary_buffer.cc)
+	SOURCES balus/temporary_buffer_demo.cc)
 
 seastar_add_demo(balus_iostream
 	SOURCES balus/iostream_demo.cc)
