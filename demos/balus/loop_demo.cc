@@ -311,32 +311,34 @@ ss::future<> f4() {
     *arr = {1, 3, 5, 6, 7, 9};
     auto counter = ss::make_shared<int>(0);
 #if 1
-    return ss::do_for_each(*arr,
+    return ss::do_for_each(
+               *arr,
 #else
     return ss::parallel_for_each(
                *arr,
 #endif
-                           [counter](int& ele) {
-        (*counter)++;
-        using namespace std::chrono_literals;
-        int nsleep = std::rand() % 6;
-        return ss::sleep(nsleep * 1s).then([ele, nsleep]() {
-            fmt::print("ele {} sleep for {} seconds\n", ele, nsleep);
-            if (ele % 2) {
-                return ss::make_ready_future<>();
+               [counter](int& ele) {
+                   (*counter)++;
+                   using namespace std::chrono_literals;
+                   int nsleep = std::rand() % 6;
+                   return ss::sleep(nsleep * 1s).then([ele, nsleep]() {
+                       fmt::print("ele {} sleep for {} seconds\n", ele, nsleep);
+                       if (ele % 2) {
+                           return ss::make_ready_future<>();
+                       } else {
+                           return ss::make_exception_future<>(
+                               std::runtime_error("do do do..."));
+                       }
+                   });
+               })
+        .then_wrapped([counter, arr](ss::future<>&& fut) {
+            if (fut.failed()) {
+                auto ex = fut.get_exception();
+                fmt::print("do_for_each failed: {}\n", ex);
             } else {
-                return ss::make_exception_future<>(
-                    std::runtime_error("do do do..."));
+                fmt::print("do_for_each succeeded\n");
             }
+            fmt::print("counter: {}\n", *counter);
+            return ss::make_ready_future<>();
         });
-    }).then_wrapped([counter, arr](ss::future<>&& fut) {
-        if (fut.failed()) {
-            auto ex = fut.get_exception();
-            fmt::print("do_for_each failed: {}\n", ex);
-        } else {
-            fmt::print("do_for_each succeeded\n");
-        }
-        fmt::print("counter: {}\n", *counter);
-        return ss::make_ready_future<>();
-    });
 }
