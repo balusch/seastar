@@ -346,6 +346,8 @@ output_stream<CharType>::split_and_put(temporary_buffer<CharType> buf) noexcept 
 template <typename CharType>
 future<>
 output_stream<CharType>::write(const char_type* buf, size_t n) noexcept {
+    assert(!_zc_bufs && "Mixing buffered writes and zero-copy writes not supported yet");
+
     if (__builtin_expect(!_buf || n > _size - _end, false)) {
         return slow_write(buf, n);
     }
@@ -358,7 +360,6 @@ template <typename CharType>
 future<>
 output_stream<CharType>::slow_write(const char_type* buf, size_t n) noexcept {
   try {
-    assert(!_zc_bufs && "Mixing buffered writes and zero-copy writes not supported yet");
     auto bulk_threshold = _end ? (2 * _size - _end) : _size;
     if (n >= bulk_threshold) {
         if (_end) {
