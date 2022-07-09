@@ -38,8 +38,8 @@ static ss::future<> f1() {
             using namespace std::chrono_literals;
             ss::sleep(2s).wait();
             std::cout << i << "-th wakeup, now: "
-                      << std::chrono::steady_clock::now().time_since_epoch() /
-                             std::chrono::seconds(1)
+                      << std::chrono::steady_clock::now().time_since_epoch()
+                             / std::chrono::seconds(1)
                       << std::endl;
         }
     });
@@ -64,8 +64,8 @@ static ss::future<> f2() {
             using namespace std::chrono_literals;
             ss::sleep(2s).wait();
             std::cout << i << "-th wakeup, now: "
-                      << std::chrono::steady_clock::now().time_since_epoch() /
-                             std::chrono::seconds(1)
+                      << std::chrono::steady_clock::now().time_since_epoch()
+                             / std::chrono::seconds(1)
                       << std::endl;
         }
     });
