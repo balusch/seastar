@@ -101,6 +101,7 @@ output_stream<CharType>::zero_copy_split_and_put(net::packet p) noexcept {
             }
             return make_ready_future<stop_iteration>(stop_iteration::yes);
         }
+        // balus(N): net::packet 和 temporary_buffer 一样的可以 share()
         auto chunk = p.share(0, _size);
         p.trim_front(_size);
         return zero_copy_put(std::move(chunk)).then([] {
@@ -344,6 +345,7 @@ output_stream<CharType>::split_and_put(temporary_buffer<CharType> buf) noexcept 
             return make_ready_future<stop_iteration>(stop_iteration::yes);
         }
         // balus(N): 每次往 data sink 里面写数据都不超过 _size 大小
+        // balus(N): 这里用的是 share()，所以并不会产生拷贝
         auto chunk = buf.share(0, _size);
         buf.trim_front(_size);
         return put(std::move(chunk)).then([] {
@@ -424,6 +426,11 @@ void add_to_flush_poller(output_stream<char>& x) noexcept;
 template <typename CharType>
 future<>
 output_stream<CharType>::flush() noexcept {
+    // balus(N): 将 flush 操作批量(一次性处理多个)处理
+    // 具体做法是将 flush 操作给放到 reactor 中去，让 reactor 去 poll
+    // 如果 flush 时发现 reactor 还没有 poll 该 flush，那么就可以去重了
+    // 需要注意，reactor poll flush 和 user write 可能并发进行(parallel)
+    // 所以需要一种同步机制来避免这个问题(即这里的 in_batch promise)
     if (!_batch_flushes) {
         if (_end) {
             _buf.trim(_end);
@@ -458,6 +465,7 @@ output_stream<CharType>::put(temporary_buffer<CharType> buf) noexcept {
     // if flush is scheduled, disable it, so it will not try to write in parallel
     _flush = false;
     if (_flushing) {
+        // balus(N): 这里最多只允许一个 waiter，而不能同时存在多个，毕竟写入也是要有序写
         // flush in progress, wait for it to end before continuing
         return _in_batch.value().get_future().then([this, buf = std::move(buf)] () mutable {
             return _fd.put(std::move(buf));
@@ -470,6 +478,7 @@ output_stream<CharType>::put(temporary_buffer<CharType> buf) noexcept {
 template <typename CharType>
 void
 output_stream<CharType>::poll_flush() noexcept {
+    // balus(N): 4 个 put() 方法会 cancel flush 操作
     if (!_flush) {
         // flush was canceled, do nothing
         _flushing = false;
@@ -510,6 +519,7 @@ future<>
 output_stream<CharType>::close() noexcept {
     return flush().finally([this] {
         if (_in_batch) {
+            // balus(N): 等待 reactor flush 完成
             return _in_batch.value().get_future();
         } else {
             return make_ready_future();
@@ -517,6 +527,7 @@ output_stream<CharType>::close() noexcept {
     }).then([this] {
         // report final exception as close error
         if (_ex) {
+            // balus(Q): 为啥这里不 std::move(_ex)?
             std::rethrow_exception(_ex);
         }
     }).finally([this] {

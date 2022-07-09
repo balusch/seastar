@@ -374,6 +374,7 @@ private:
     // balus(N): 似乎 available() 和 possible_available() 都没有被用上
     size_t available() const noexcept { return _end - _begin; }
     size_t possibly_available() const noexcept { return _size - _begin; }
+    // balus(N): 这 4 个 put() 方法，都是直接写 data sink，所以前提是 _buf/_zc_bufs 中没有数据
     future<> split_and_put(temporary_buffer<CharType> buf) noexcept;
     future<> put(temporary_buffer<CharType> buf) noexcept;
     void poll_flush() noexcept;
