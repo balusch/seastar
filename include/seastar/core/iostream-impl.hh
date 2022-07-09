@@ -362,30 +362,24 @@ output_stream<CharType>::slow_write(const char_type* buf, size_t n) noexcept {
   try {
     auto bulk_threshold = _end ? (2 * _size - _end) : _size;
     if (n >= bulk_threshold) {
+        auto send_internal_buf = make_ready_future<>();
         if (_end) {
-            auto now = _size - _end;
-            std::copy(buf, buf + now, _buf.get_write() + _end);
-            _end = _size;
-            temporary_buffer<char> tmp = _fd.allocate_buffer(n - now);
-            std::copy(buf + now, buf + n, tmp.get_write());
-            _buf.trim(_end);
+            auto avail = _size - _end;
+            std::copy(buf, buf + avail, _buf.get_write() + _end);
+            _buf.trim(_size);
             _end = 0;
-            return put(std::move(_buf)).then([this, tmp = std::move(tmp)]() mutable {
-                if (_trim_to_size) {
-                    return split_and_put(std::move(tmp));
-                } else {
-                    return put(std::move(tmp));
-                }
-            });
-        } else {
-            temporary_buffer<char> tmp = _fd.allocate_buffer(n);
-            std::copy(buf, buf + n, tmp.get_write());
-            if (_trim_to_size) {
-                return split_and_put(std::move(tmp));
-            } else {
-                return put(std::move(tmp));
-            }
+
+            buf += avail;
+            n -= avail;
+            send_internal_buf = put(std::move(_buf));
         }
+
+        temporary_buffer<char> rest = _fd.allocate_buffer(n);
+        std::copy(buf, buf + n, rest.get_write());
+        return send_internal_buf.then([this, rest = std::move(rest)]() mutable {
+            return _trim_to_size ? split_and_put(std::move(rest))
+                                 : put(std::move(rest));
+        });
     }
 
     if (!_buf) {
