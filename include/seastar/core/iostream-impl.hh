@@ -348,7 +348,7 @@ future<>
 output_stream<CharType>::write(const char_type* buf, size_t n) noexcept {
     assert(!_zc_bufs && "Mixing buffered writes and zero-copy writes not supported yet");
 
-    if (__builtin_expect(!_buf || n > _size - _end, false)) {
+    if (__builtin_expect(!_buf || n > available(), false)) {
         return slow_write(buf, n);
     }
     std::copy_n(buf, n, _buf.get_write() + _end);
@@ -363,7 +363,7 @@ output_stream<CharType>::slow_write(const char_type* buf, size_t n) noexcept {
     auto bulk_threshold = _end ? (2 * _size - _end) : _size;
     if (n >= bulk_threshold) {
         if (_end) {
-            auto now = _size - _end;
+            auto now = available();
             std::copy(buf, buf + now, _buf.get_write() + _end);
             _end = _size;
             temporary_buffer<char> tmp = _fd.allocate_buffer(n - now);
@@ -392,7 +392,7 @@ output_stream<CharType>::slow_write(const char_type* buf, size_t n) noexcept {
         _buf = _fd.allocate_buffer(_size);
     }
 
-    auto now = std::min(n, _size - _end);
+    auto now = std::min(n, available());
     std::copy(buf, buf + now, _buf.get_write() + _end);
     _end += now;
     if (now == n) {
