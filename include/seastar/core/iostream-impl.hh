@@ -330,6 +330,8 @@ input_stream<CharType>::detach() && {
 template <typename CharType>
 future<>
 output_stream<CharType>::split_and_put(temporary_buffer<CharType> buf) noexcept {
+    // balus(Q): 为啥要这个 assertion 呢？
+    // balus(N): 这是一个 private method，所以 _end == 0 是调用方准备的 precondition
     assert(_end == 0);
 
     return repeat([this, buf = std::move(buf)] () mutable {
@@ -341,6 +343,7 @@ output_stream<CharType>::split_and_put(temporary_buffer<CharType> buf) noexcept 
             _end = buf.size();
             return make_ready_future<stop_iteration>(stop_iteration::yes);
         }
+        // balus(N): 每次往 data sink 里面写数据都不超过 _size 大小
         auto chunk = buf.share(0, _size);
         buf.trim_front(_size);
         return put(std::move(chunk)).then([] {
@@ -363,9 +366,11 @@ output_stream<CharType>::write(const char_type* buf, size_t n) noexcept {
 template <typename CharType>
 future<>
 output_stream<CharType>::slow_write(const char_type* buf, size_t n) noexcept {
+  // balus(N): 走到这里说明 _buf 存不下 input data 了，必须要往底层 data sink 写入数据
   try {
     assert(!_zc_bufs && "Mixing buffered writes and zero-copy writes not supported yet");
     auto bulk_threshold = _end ? (2 * _size - _end) : _size;
+    // balus(N): threshold 表示一次 put(最大 _size) 和当前 _buf 最大可以消耗的的字节数
     if (n >= bulk_threshold) {
         if (_end) {
             auto now = _size - _end;
@@ -432,6 +437,7 @@ output_stream<CharType>::flush() noexcept {
             });
         }
     } else {
+        // balus(Q): 为啥这里要 std::move() 掉 _ex？后面那不就是又可以正常 flush 了么？
         if (_ex) {
             // flush is a good time to deliver outstanding errors
             return make_exception_future<>(std::move(_ex));
