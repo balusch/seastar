@@ -356,8 +356,11 @@ class output_stream final {
     data_sink _fd;
     temporary_buffer<CharType> _buf;
     net::packet _zc_bufs = net::packet::make_null_packet(); //zero copy buffers
+    // balus(N): _size 是可以往底层 data sink 一次写入的最大数据
     size_t _size = 0;
+    // balus(N): 似乎 _begin 并没有任何逻辑？
     size_t _begin = 0;
+    // balus(Q): _end 表示？
     size_t _end = 0;
     bool _trim_to_size = false;
     bool _batch_flushes = false;
@@ -368,6 +371,7 @@ class output_stream final {
     bi::slist_member_hook<> _in_poller;
 
 private:
+    // balus(N): 似乎 available() 和 possible_available() 都没有被用上
     size_t available() const noexcept { return _end - _begin; }
     size_t possibly_available() const noexcept { return _size - _begin; }
     future<> split_and_put(temporary_buffer<CharType> buf) noexcept;
