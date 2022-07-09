@@ -350,7 +350,6 @@ class output_stream final {
     temporary_buffer<CharType> _buf;
     net::packet _zc_bufs = net::packet::make_null_packet(); //zero copy buffers
     size_t _size = 0;
-    size_t _begin = 0;
     size_t _end = 0;
     bool _trim_to_size = false;
     bool _batch_flushes = false;
@@ -359,8 +358,7 @@ class output_stream final {
     bool _flushing = false;
     std::exception_ptr _ex;
 private:
-    size_t available() const noexcept { return _end - _begin; }
-    size_t possibly_available() const noexcept { return _size - _begin; }
+    size_t available() const noexcept { return _size - _end; }
     future<> split_and_put(temporary_buffer<CharType> buf) noexcept;
     future<> put(temporary_buffer<CharType> buf) noexcept;
     void poll_flush() noexcept;
