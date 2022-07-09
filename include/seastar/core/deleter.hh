@@ -144,6 +144,7 @@ struct lambda_deleter_impl final : deleter::impl {
     virtual ~lambda_deleter_impl() override { del(); }
 };
 
+// balus(Q): object_deleter_impl 中的 obj 啥时候使用呢？还是说只是为了自然析构？
 template <typename Object>
 struct object_deleter_impl final : deleter::impl {
     Object obj;
@@ -196,6 +197,9 @@ deleter::share() {
     if (!_impl) {
         return deleter();
     }
+    // balus(N): _impl 直接指向需要释放的对象，也就是说 impl 不是一个 `deleter_impl` 对象
+    // 无法记录引用计数，所以需要先将其转换为一个 object deleter impl，相当于加了一层抽象？
+    // deleter 析构时递减 impl 的引用计数，引用计数为 0 时 delete impl，从而 free raw object
     if (is_raw_object()) {
         _impl = new free_deleter_impl(to_raw_object());
     }
@@ -221,7 +225,9 @@ void deleter::append(deleter d) {
             next_d->_impl = next_impl = new free_deleter_impl(to_raw_object(next_impl));
         }
 
+        // balus(N): 为啥这种情况要 return 呢？
         if (next_impl->refs != 1) {
+            // balus(N): 这里又用了 type eraseure 的手段，impl 指向模板类 object_deleter_impl
             next_d->_impl = next_impl = make_object_deleter_impl(deleter(next_impl), std::move(d));
             return;
         }
