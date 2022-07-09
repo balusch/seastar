@@ -43,7 +43,7 @@ seastar::future<std::string> fetch(const std::string& domain,
     static int count = 0;
     return ++count != 2
              ? ss::make_exception_future<std::string>(
-                   std::logic_error("logic error"))
+                 std::logic_error("logic error"))
              : ss::make_ready_future<std::string>("bbbbbbbbbbbbbbbbb");
 }
 

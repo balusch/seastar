@@ -26,9 +26,9 @@ ss::future<> f1() {
         "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
         "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
-    return ss::open_file_dma("hello.txt", ss::open_flags::wo |
-                                              ss::open_flags::create |
-                                              ss::open_flags::exclusive)
+    return ss::open_file_dma("hello.txt", ss::open_flags::wo
+                                              | ss::open_flags::create
+                                              | ss::open_flags::exclusive)
         .then([](ss::file &&f) {
             return ss::make_file_output_stream(f, 32).then(
                 [](ss::output_stream<char> &&os) mutable {
