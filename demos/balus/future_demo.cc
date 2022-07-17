@@ -37,10 +37,11 @@ private:
 };
 
 [[maybe_unused]] static ss::future<> f1();
+[[maybe_unused]] static ss::future<> f2();
 
 int main(int argc, char** argv) {
     ss::app_template app;
-    return app.run(argc, argv, []() { return f1(); });
+    return app.run(argc, argv, []() { return f2(); });
 }
 
 static ss::future<> f1() {
@@ -51,4 +52,41 @@ static ss::future<> f1() {
     std::cout << "name: " << w2.GetName() << ", ctor counter: " << counter
               << std::endl;
     return ss::make_ready_future<>();
+}
+
+class balus_exception : public std::exception {
+public:
+    explicit balus_exception(const std::string& msg) : _msg(msg) {}
+
+    virtual const char* what() const throw() { return _msg.c_str(); }
+
+    virtual const std::string& str() const { return _msg; }
+
+private:
+    std::string _msg;
+};
+
+struct MyObject {
+public:
+    explicit MyObject(const std::string& name) : _name(name) {
+        fmt::print("construct: {}\n", _name);
+    }
+    MyObject(const MyObject& rhs) : _name(rhs._name) {
+        fmt::print("copy construct: {}\n", _name);
+    }
+    MyObject(MyObject&& rhs) : _name(std::move(rhs._name)) {
+        fmt::print("move construct: {}\n", _name);
+    }
+
+private:
+    std::string _name;
+};
+
+// test future::handle_exception_type() method
+static ss::future<> f2() {
+    MyObject mo("hello");
+    return ss::make_exception_future<>(balus_exception("balus: test exception"))
+        .handle_exception_type([mo = std::move(mo)](const balus_exception& ex) {
+            fmt::print("handle balus_exception: {}\n", ex.str());
+        });
 }
