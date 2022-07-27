@@ -498,6 +498,11 @@ posix_server_socket_impl::accept() {
             return make_ready_future<accept_result>(
                     accept_result{connected_socket(std::move(csi)), sa});
         } else {
+            // balus(N): lb 之后，一个 server socket accpet() 得到的 connected_socket 可能需要分配给其他 shard 去处理
+            // submit_to() 的 lambda 是在 remote shard 执行的，但是 lambda 的 capture list 是在 local shard 捕获的
+            // 这里首先将 connection(即 fd) 给移动到 remote shard 的 posix_ap_server_socket 一个 map 里面，这个 ap server
+            // 的 accept() 方法其实只是从这个 map 中取出一个连接(取不到就创建一个 promise 占位符，后面其他 shard 有连接放过来再 resolve)
+            // balus(Q): posix_server_socket 和 posix_ap_server_socket 是怎么配合使用的？
             // FIXME: future is discarded
             (void)smp::submit_to(cpu, [protocol = _protocol, ssa = _sa, fd = std::move(fd.get_file_desc()), sa, cth = std::move(cth), allocator = _allocator] () mutable {
                 posix_ap_server_socket_impl::move_connected_socket(protocol, ssa, pollable_fd(std::move(fd)), sa, std::move(cth), allocator);
@@ -639,6 +644,7 @@ posix_data_sink_impl::put(temporary_buffer<char> buf) {
 future<>
 posix_data_sink_impl::put(packet p) {
     _p = std::move(p);
+    // balus(Q): 什么时候才需要 capture shared_from_this() 呢？
     return _fd.write_all(_p).then([this] { _p.reset(); });
 }
 
@@ -688,6 +694,11 @@ posix_ap_network_stack::listen(socket_address sa, listen_options opt) {
         return server_socket(std::make_unique<posix_ap_server_socket_impl>(0, sa, _allocator));
     }
     auto protocol = static_cast<int>(opt.proto);
+    // balus(Q): 为啥 _reuseport 就需要 engine().posix_listen()，而 !reuseport 就不需要呢？
+    // 而且在 posix_network_stack 的情况下，不管是不是 _reuseport 都需要 engine().posix_listen()
+    // balus(N)：感觉应该是 ap_server 和 reuseport 特性二者叠加的缘故：
+    //     - ap server 其实是直接拿的是其他 shard 移动过来的 fd(通过 poisix_server_socket_impl)，所以理论上是不需要 listen 的
+    //     - 但是 reuseport 的特性则是可以让一个 port 被多次监听，由 kernel 做负载均衡，所以需要调用 posix_listen
     return _reuseport ?
         server_socket(std::make_unique<posix_reuseport_server_socket_impl>(protocol, sa, engine().posix_listen(sa, opt), _allocator))
         :
@@ -863,6 +874,9 @@ network_stack_entry register_posix_stack() {
     return network_stack_entry{
         "posix", std::make_unique<program_options::option_group>(nullptr, "Posix"),
         [](const program_options::option_group& ops) {
+            // balus(N): 这里总算理解了 posix_network_stack 和 posix_ap_network_stack 的区别与联系了
+            //   * 如果不支持 reuseport，则 所以其实是主线程负责监听端口，然后分发到各个 worker 线程
+            //   * 否则的话，每个线程都监听端口，由 kernel 做负载均衡(而且主线程不会主动调用 listen()，所以实际上只有 worker 线程监听)
             return smp::main_thread() ? posix_network_stack::create(ops)
                                       : posix_ap_network_stack::create(ops);
         },

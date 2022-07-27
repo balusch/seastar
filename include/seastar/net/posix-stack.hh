@@ -41,6 +41,7 @@ using namespace seastar;
 // Right now this class is used by the posix_server_socket_impl, but it could be used by any other.
 class conntrack {
     class load_balancer {
+        // balus(N): 此处的 load 完全指的是该 CPU 正在处理的请求的数量
         std::vector<unsigned> _cpu_load;
     public:
         load_balancer() : _cpu_load(size_t(smp::count), 0) {}
