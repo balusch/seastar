@@ -1461,6 +1461,7 @@ reactor::posix_listen(socket_address sa, listen_options opts) {
         // no type-safe way to create listen_opts with proto=0
         specific_protocol = 0;
     }
+    // 真正执行 listen 的次数会很少(一般是系统启动时)，所以读文件也是可以接受的
     static auto somaxconn = [] {
         std::optional<int> result;
         std::ifstream ifs("/proc/sys/net/core/somaxconn");

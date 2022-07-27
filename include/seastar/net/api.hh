@@ -376,6 +376,7 @@ struct listen_options {
 
 class network_interface {
 private:
+    // balus(Q): 为啥这里是 seastar::shared_ptr，其他地方都是 std::unique_ptr ？
     shared_ptr<net::network_interface_impl> _impl;
 public:
     network_interface() = delete;
