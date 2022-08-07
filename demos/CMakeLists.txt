@@ -165,3 +165,5 @@ seastar_add_demo(balus_iostream
 seastar_add_demo(balus_net_socket
 	SOURCES balus/net_socket_demo.cc)
 
+seastar_add_demo(balus_httpd
+	SOURCES balus/httpd_demo.cc)
