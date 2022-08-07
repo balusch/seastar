@@ -14,13 +14,28 @@ int main(int argc, char **argv) {
     return app.run(argc, argv, f1);
 }
 
+class simple_server {
+public:
+    simple_server() = default;
+    ~simple_server() = default;
+
+    ss::future<> accept();
+
+private:
+};
+
+[[maybe_unused]] static ss::future<> process_connection(
+    ss::connected_socket cs);
+
 static ss::future<> f1() {
     ss::listen_options lopt;
     ss::socket_address sa(uint16_t(9877));
-    ss::server_socket s = ss::engine().listen(sa, lopt);
-    return s.accept().then([](ss::accept_result ar) {
-        auto conn = std::move(ar.connection);
-        auto peer = std::move(ar.remote_address);
-        return ss::make_ready_future<>();
+    ss::server_socket s = ss::listen(sa, lopt);
+    return ss::repeat([s = std::move(s)]() mutable {
+        return s.accept().then([](ss::accept_result ar) {
+            std::cout << "accept connection from: " << ar.remote_address
+                      << std::endl;
+            return ss::stop_iteration();
+        });
     });
 }
