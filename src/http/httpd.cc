@@ -110,6 +110,9 @@ future<> connection::start_response() {
             } else {
                 return _write_buf.flush();
             }
+        // balus(T): 这里的 then_wrapped 是不是可以直接换位 then? 然后下面再接一个 then_wrapped
+        // 统一处理 _write_buf.write() 以及可能的 _write_buf.flush() 产生的异常?
+        // 上面的 then_wrapped 也可以这样？
         }).then_wrapped([this] (auto f) {
             if (f.failed()) {
                 // flush failed. just close the connection
