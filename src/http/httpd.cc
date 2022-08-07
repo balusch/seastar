@@ -82,6 +82,8 @@ future<> connection::do_response_loop() {
         });
 }
 
+// balus(Q): 目前只支持以 Content-Length 方式响应 ???
+// balus(T): 可以考虑支持 Chunked 响应
 future<> connection::start_response() {
     if (_resp->_body_writer) {
         return _resp->write_reply_to_connection(*this).then_wrapped([this] (auto f) {
@@ -241,6 +243,8 @@ future<> connection::read_one() {
             return make_ready_future<>();
         }
 
+        // balus(Q): 同时存在 Content-Length 和 Transfer-Encoding 的情况下应该先考虑 Transfer-Encoding ???
+        // 在 make_content_stream() 函数中，也是先考虑 Transfer-Encoding，再考虑 Content-Length 的
         size_t content_length_limit = _server.get_content_length_limit();
         sstring length_header = req->get_header("Content-Length");
         req->content_length = strtol(length_header.c_str(), nullptr, 10);
@@ -259,6 +263,7 @@ future<> connection::read_one() {
         }
 
         auto maybe_reply_continue = [this, req = std::move(req)] () mutable {
+            // balus(T): 去 RFC 看看 Expect: 100-continue 的含义以及用途
             if (req->_version == "1.1" && request::case_insensitive_cmp()(req->get_header("Expect"), "100-continue")){
                 return _replies.not_full().then([req = std::move(req), this] () mutable {
                     auto continue_reply = std::make_unique<reply>();
