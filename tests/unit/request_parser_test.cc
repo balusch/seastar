@@ -72,3 +72,32 @@ SEASTAR_TEST_CASE(test_header_parsing) {
     }
     return make_ready_future<>();
 }
+
+SEASTAR_TEST_CASE(test_verison_09_request_parsing) {
+    struct test_case {
+        sstring msg;
+        bool parsable;
+
+        temporary_buffer<char> buf() {
+            return temporary_buffer<char>(msg.c_str(), msg.size());
+        }
+    };
+    std::vector<test_case> tests = {
+        {"GET /index.html\r\n", true},
+        {"HEAD /index.html\r\n", false},
+        {"GET/index.html\r\n", false},
+    };
+
+    http_request_parser parser;
+    for (auto& test : tests) {
+        parser.init();
+        BOOST_REQUIRE(parser(test.buf()).get0().has_value());
+        BOOST_REQUIRE_NE(parser.failed(), test.parsable);
+        if (test.parsable) {
+            auto request = parser.get_parsed_request();
+            BOOST_REQUIRE_EQUAL(request->_method, "GET");
+            BOOST_REQUIRE_EQUAL(request->_version, "0.9");
+        }
+    }
+    return make_ready_future<>();
+}

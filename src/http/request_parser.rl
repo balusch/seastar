@@ -100,6 +100,13 @@ action done {
     fbreak;
 }
 
+action done_http_09 {
+    _req->_version = "0.9";
+    _req->_method = "GET";
+    done = true;
+    fbreak;
+}
+
 crlf = '\r\n';
 tchar = alpha | digit | '-' | '!' | '#' | '$' | '%' | '&' | '\'' | '*'
         | '+' | '.' | '^' | '_' | '`' | '|' | '~';
@@ -125,7 +132,9 @@ start_line = ((operation sp uri sp http_version) -- crlf) crlf;
 header_1st = (field ':' sp_ht* value crlf) %assign_field;
 header_cont = (sp_ht+ value crlf) %extend_field;
 header = header_1st header_cont*;
-main := start_line header* (crlf @done);
+simple_request = 'GET' sp uri (crlf @done_http_09);
+full_request = start_line header* (crlf @done);
+main := simple_request | full_request;
 
 }%%
 
