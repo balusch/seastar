@@ -21,6 +21,7 @@
 #include <seastar/util/noncopyable_function.hh>
 #include <seastar/http/json_path.hh>
 #include <seastar/http/response_parser.hh>
+#include <seastar/http/request_parser.hh>
 #include <sstream>
 #include <seastar/core/shared_future.hh>
 #include <seastar/util/later.hh>
@@ -1191,7 +1192,7 @@ SEASTAR_THREAD_TEST_CASE(multiple_connections) {
     lcf.destroy_all_shards().get();
 }
 
-SEASTAR_TEST_CASE(http_parse_response_status) {
+SEASTAR_TEST_CASE(http_parse_http_09) {
     http_response_parser parser;
     parser.init();
     char r101[] = "HTTP/1.1 101 Switching Protocols\r\n\r\n";
@@ -1205,6 +1206,17 @@ SEASTAR_TEST_CASE(http_parse_response_status) {
     parser.parse(r200, r200 + sizeof(r200), r200 + sizeof(r200));
     response = parser.get_parsed_response();
     BOOST_REQUIRE_EQUAL(response->_status_code, 200);
+    return make_ready_future<>();
+}
+
+SEASTAR_TEST_CASE(http_parse_response_status) {
+    http_request_parser parser;
+    parser.init();
+    char req[] = "GET /index.html\r\n";
+    parser.parse(req, req+ sizeof(req), req + sizeof(req));
+    std::unique_ptr<httpd::request> request = parser.get_parsed_request();
+    BOOST_REQUIRE_EQUAL(request->_method, "GET");
+    BOOST_REQUIRE_EQUAL(request->_version, "0.9");
     return make_ready_future<>();
 }
 

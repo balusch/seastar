@@ -230,6 +230,7 @@ future<> connection::read_one() {
     return _read_buf.consume(_parser).then([this] () mutable {
         if (_parser.eof()) {
             _done = true;
+            hlogger.info("eof...");
             return make_ready_future<>();
         }
         ++_server._requests_served;
@@ -243,8 +244,11 @@ future<> connection::read_one() {
                 req->_version = "1.1";
             }
             generate_error_reply_and_close(std::move(req), reply::status_type::bad_request, "Can't parse the request");
+            hlogger.info("failed...");
             return make_ready_future<>();
         }
+
+        hlogger.info("parse request successfully, method:{}, version:{}, protocol_name:{}", req->_method, req->_version, req->protocol_name);
 
         // balus(Q): 同时存在 Content-Length 和 Transfer-Encoding 的情况下应该先考虑 Transfer-Encoding ???
         // 在 make_content_stream() 函数中，也是先考虑 Transfer-Encoding，再考虑 Content-Length 的
