@@ -241,6 +241,12 @@ future<> connection::read_one() {
             return make_ready_future<>();
         }
 
+        if (req->_version == "0.9") {
+            // reject HTTP/0.9 requests
+            _done = true;
+            return make_ready_future<>();
+        }
+
         size_t content_length_limit = _server.get_content_length_limit();
         sstring length_header = req->get_header("Content-Length");
         req->content_length = strtol(length_header.c_str(), nullptr, 10);
