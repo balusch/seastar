@@ -43,6 +43,38 @@
 
 namespace perf_tests {
 namespace internal {
+namespace {
+
+struct duration {
+    double value;
+};
+
+static inline std::ostream& operator<<(std::ostream& os, duration d) {
+    auto value = d.value;
+    if (value < 1'000) {
+        os << fmt::format("{:.3f}ns", value);
+    } else if (value < 1'000'000) {
+        // fmt hasn't discovered unicode yet so we are stuck with uicroseconds
+        // See: https://github.com/fmtlib/fmt/issues/628
+        os << fmt::format("{:.3f}us", value / 1'000);
+    } else if (value < 1'000'000'000) {
+        os << fmt::format("{:.3f}ms", value / 1'000'000);
+    } else {
+        os << fmt::format("{:.3f}s", value / 1'000'000'000);
+    }
+    return os;
+}
+
+} // namespace
+} // namespace internal
+} // namespace perf_tests
+
+#if FMT_VERSION >= 90000
+template <> struct fmt::formatter<perf_tests::internal::duration> : fmt::ostream_formatter {};
+#endif
+
+namespace perf_tests {
+namespace internal {
 
 namespace {
 
@@ -159,31 +191,6 @@ struct result {
     double tasks = 0.;
     double inst = 0.;
 };
-
-namespace {
-
-struct duration {
-    double value;
-};
-
-static inline std::ostream& operator<<(std::ostream& os, duration d)
-{
-    auto value = d.value;
-    if (value < 1'000) {
-        os << fmt::format("{:.3f}ns", value);
-    } else if (value < 1'000'000) {
-        // fmt hasn't discovered unicode yet so we are stuck with uicroseconds
-        // See: https://github.com/fmtlib/fmt/issues/628
-        os << fmt::format("{:.3f}us", value / 1'000);
-    } else if (value < 1'000'000'000) {
-        os << fmt::format("{:.3f}ms", value / 1'000'000);
-    } else {
-        os << fmt::format("{:.3f}s", value / 1'000'000'000);
-    }
-    return os;
-}
-
-}
 
 static constexpr auto header_format_string = "{:<40} {:>11} {:>11} {:>11} {:>11} {:>11} {:>11} {:>11} {:>11}\n";
 static constexpr auto        format_string = "{:<40} {:>11} {:>11} {:>11} {:>11} {:>11} {:>11.3f} {:>11.3f} {:>11.1f}\n";
