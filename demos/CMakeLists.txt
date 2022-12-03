@@ -122,3 +122,6 @@ seastar_add_demo (tutorial_examples
 
 seastar_add_demo (http_client
   SOURCES http_client_demo.cc)
+
+seastar_add_demo (balus_sharded
+  SOURCES balus_sharded_demo.cc)
