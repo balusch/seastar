@@ -9,5 +9,8 @@ __pycache__/
 cmake/Cooking.cmake
 tags
 .idea/
+.fleet/
 .vscode/
+.cache
+cmake-build-*
 compile_commands.json
